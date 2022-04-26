@@ -27,7 +27,7 @@ from pydicom.valuerep import DSfloat
 from wsidicom import ImageData, WsiDicom, WsiInstance
 from wsidicom.instance import WsiDataset
 
-from wsidicomizer.encoding import Encoder
+from wsidicomizer.encoding import Encoder, JpegEncoder
 
 from .dataset import get_image_type, merge_dataset
 
@@ -60,7 +60,7 @@ class MetaImageData(ImageData, metaclass=ABCMeta):
     @property
     @abstractmethod
     def photometric_interpretation(self) -> str:
-        raise NotADirectoryError()
+        raise NotImplementedError()
 
     def create_instance_dataset(
         self,
@@ -103,7 +103,7 @@ class MetaImageData(ImageData, metaclass=ABCMeta):
             dataset.BitsStored = 8
             dataset.HighBit = 7
             dataset.PixelRepresentation = 0
-            # dataset.LossyImageCompressionRatio = 1
+            dataset.LossyImageCompressionRatio = 1
             dataset.LossyImageCompressionMethod = 'ISO_10918_1'
             dataset.LossyImageCompression = '01'
         elif image_data.transfer_syntax == JPEG2000:
@@ -112,7 +112,7 @@ class MetaImageData(ImageData, metaclass=ABCMeta):
             dataset.BitsStored = 8
             dataset.HighBit = 7
             dataset.PixelRepresentation = 0
-            # dataset.LossyImageCompressionRatio = 1
+            dataset.LossyImageCompressionRatio = 1
             dataset.LossyImageCompressionMethod = 'ISO_15444_1'
             dataset.LossyImageCompression = '01'
         elif image_data.transfer_syntax == JPEG2000Lossless:
@@ -150,9 +150,16 @@ class MetaImageData(ImageData, metaclass=ABCMeta):
                 DSfloat(self.pixel_spacing.height, True)
             ]
             pixel_measure_sequence.SpacingBetweenSlices = 0.0
-            pixel_measure_sequence.SliceThickness = 0.0
+            # DICOM 2022a part 3 IODs - C.8.12.4.1.2 Imaged Volume Width,
+            # Height, Depth. Depth must not be 0. Default to 0.5 microns
+            pixel_measure_sequence.SliceThickness = 0.0005
             shared_functional_group_sequence.PixelMeasuresSequence = (
                 DicomSequence([pixel_measure_sequence])
+            )
+            wsi_frame_type_item = Dataset()
+            wsi_frame_type_item.FrameType = dataset.ImageType
+            shared_functional_group_sequence.WholeSlideMicroscopyImageFrameTypeSequence = (
+                DicomSequence([wsi_frame_type_item])
             )
             dataset_to_merge.SharedFunctionalGroupsSequence = DicomSequence(
                 [shared_functional_group_sequence]
@@ -163,7 +170,8 @@ class MetaImageData(ImageData, metaclass=ABCMeta):
             dataset_to_merge.ImagedVolumeHeight = (
                 self.image_size.height * self.pixel_spacing.height
             )
-            dataset_to_merge.ImagedVolumeDepth = 0.0
+            dataset_to_merge.ImagedVolumeDepth = pixel_measure_sequence.SliceThickness
+            
             dataset = merge_dataset(dataset, dataset_to_merge)
 
         return WsiDataset(dataset)

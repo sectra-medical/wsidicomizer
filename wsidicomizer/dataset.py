@@ -51,7 +51,7 @@ def get_image_type(image_flavor: str, level_index: int) -> List[str]:
     else:
         resampled = 'RESAMPLED'
 
-    return ['ORGINAL', 'PRIMARY', image_flavor, resampled]
+    return ['ORIGINAL', 'PRIMARY', image_flavor, resampled]
 
 
 def create_base_dataset(
@@ -140,10 +140,12 @@ def create_wsi_dataset(
     dataset = Dataset()
 
     # General series and Whole slide Microscopy modules
+    dataset.SeriesNumber = ''
     dataset.SeriesInstanceUID = uid_generator()
 
     # Frame of reference module
     dataset.FrameOfReferenceUID = uid_generator()
+    dataset.PositionReferenceIndicator = 'SLIDE_CORNER'
 
     # Acquisition context module (empty)
     dataset.AcquisitionContextSequence = DicomSequence()
@@ -273,22 +275,22 @@ def create_patient_module(
 
 
 def create_device_module(
-    manufacturer: str = 'Unkown',
-    model_name: str = 'Unkown',
-    serial_number: str = 'Unkown',
-    software_versions: Sequence[str] = ['Unkown']
+    manufacturer: str = 'Unknown',
+    model_name: str = 'Unknown',
+    serial_number: str = 'Unknown',
+    software_versions: Sequence[str] = ['Unknown']
 ) -> Dataset:
     """Create extended equipment module.
 
     Parameters
     ----------
-    manufacturer: str = 'Unkown'.
+    manufacturer: str = 'Unknown'.
         Manufacturer of the equipment.
-    model_name: str = 'Unkown'
+    model_name: str = 'Unknown'
         Manufacturer's model name of the equipment.
-    serial_number: str = 'Unkown'
+    serial_number: str = 'Unknown'
         Manufacturer's serial number of the equipment.
-    software_versions: Sequence[str] = ['Unkown']
+    software_versions: Sequence[str] = ['Unknown']
         Software version of the equipment.
 
     Returns
@@ -553,6 +555,7 @@ def create_specimen_module(
     """
     dataset = Dataset()
     dataset.ContainerIdentifier = slide_id
+    dataset.IssuerOfTheContainerIdentifierSequence = DicomSequence()
 
     container_type_code_sequence = Dataset()
     container_type_code_sequence.CodeValue = '258661006'
@@ -697,9 +700,9 @@ def create_default_modules(
 
     # Generic specimen module
     modules.append(create_specimen_module(
-        'Unkown',
+        'Unknown',
         samples=[create_sample(
-            sample_id='Unkown',
+            sample_id='Unknown',
             uid_generator=uid_generator
         )]
     ))
